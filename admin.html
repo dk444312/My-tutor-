@@ -368,6 +368,9 @@
           if (window.innerWidth < 768) {
             sidebar.classList.add("sidebar-hidden");
           }
+          if (sectionId === "dashboard") {
+            loadDashboard();
+          }
         });
       });
     }
@@ -418,6 +421,8 @@
     }
 
     // Dashboard
+    let sessionsChart, billingChart;
+
     async function loadDashboard() {
       try {
         const sessionSnapshot = await getDocs(collection(db, "sessions"));
@@ -435,7 +440,16 @@
           return acc;
         }, {});
 
-        new Chart(document.getElementById("sessionsChart"), {
+        // Destroy existing charts if they exist
+        if (sessionsChart) {
+          sessionsChart.destroy();
+        }
+        if (billingChart) {
+          billingChart.destroy();
+        }
+
+        // Create new charts
+        sessionsChart = new Chart(document.getElementById("sessionsChart"), {
           type: "bar",
           data: {
             labels: sessionCounts.map(c => c.course),
@@ -450,7 +464,7 @@
           options: { scales: { y: { beginAtZero: true } } }
         });
 
-        new Chart(document.getElementById("billingChart"), {
+        billingChart = new Chart(document.getElementById("billingChart"), {
           type: "pie",
           data: {
             labels: Object.keys(billingTotals),
@@ -732,7 +746,6 @@
           const b = doc.data();
           billingBody.innerHTML += `
             <tr>
-              <td class="p-3">${b.student}</td>
               <td class="p-3">$${b.amount}</td>
               <td class="p-3">${b.note}</td>
               <td class="p-3">${b.date.toDate().toLocaleString()}</td>
