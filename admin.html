@@ -1,27 +1,51 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Dashboard - My Tutor</title>
+  <title>My Tutor Admin Panel</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background-color: #f1f5f9;
+      background: #f9fafb;
+      color: #333;
       margin: 0;
       padding: 20px;
-      color: #1e293b;
+    }
+    h1 {
+      color: #2c3e50;
     }
     .container {
       max-width: 1000px;
       margin: auto;
       background: white;
-      padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+      padding: 20px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
     }
-    h1, h2 {
-      color: #0f172a;
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 15px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #4338ca;
     }
     table {
       width: 100%;
@@ -30,45 +54,81 @@
     }
     th, td {
       padding: 10px;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #e5e7eb;
     }
     th {
-      background-color: #f8fafc;
+      background: #f3f4f6;
     }
-    .logout-btn {
-      float: right;
-      background-color: #ef4444;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
+    .flex {
+      display: flex;
+      gap: 10px;
+    }
+    .billing-section {
+      margin-top: 40px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <button class="logout-btn" onclick="logout()">Logout</button>
-    <h1>Welcome to Your Dashboard</h1><h2>Your Sessions</h2>
-<table>
-  <thead>
-    <tr><th>Course</th><th>Concept</th><th>Duration</th><th>Date</th></tr>
-  </thead>
-  <tbody id="sessionList"></tbody>
-</table>
+    <h1>Admin Panel - My Tutor</h1>
+    <form id="sessionForm">
+      <label for="studentEmail">Student Email:</label>
+      <input type="email" id="studentEmail" required>
 
-<h2>Your Billing</h2>
-<table>
-  <thead>
-    <tr><th>Amount</th><th>Note</th><th>Date</th></tr>
-  </thead>
-  <tbody id="billingList"></tbody>
-</table>
+      <label for="course">Course:</label>
+      <select id="course">
+        <option value="Catholic Social Teaching">Catholic Social Teaching</option>
+        <option value="Accounting">Accounting</option>
+        <option value="Math">Math</option>
+      </select>
 
-  </div>  <script type="module">
+      <label for="concept">Concept Covered:</label>
+      <input type="text" id="concept" required>
+
+      <label for="duration">Session Duration (mins):</label>
+      <input type="number" id="duration" required>
+
+      <label for="date">Date:</label>
+      <input type="date" id="date" required>
+
+      <button type="submit">Add Session</button>
+    </form>
+
+    <div class="billing-section">
+      <h2>Billing Info</h2>
+      <label for="billStudent">Student Email:</label>
+      <input type="email" id="billStudent">
+
+      <label for="amount">Amount ($):</label>
+      <input type="number" id="amount">
+
+      <label for="billNote">Note:</label>
+      <textarea id="billNote"></textarea>
+
+      <button id="addBill">Add Billing Entry</button>
+    </div>
+
+    <h2>Session Records</h2>
+    <input type="text" id="sessionSearch" placeholder="Search sessions">
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Course</th><th>Concept</th><th>Duration</th><th>Date</th></tr>
+      </thead>
+      <tbody id="sessionsBody"></tbody>
+    </table>
+
+    <h2>Billing Records</h2>
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Amount</th><th>Note</th><th>Date</th></tr>
+      </thead>
+      <tbody id="billingBody"></tbody>
+    </table>
+  </div>
+
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
-    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
@@ -80,51 +140,79 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth();
     const db = getFirestore(app);
 
-    const sessionList = document.getElementById("sessionList");
-    const billingList = document.getElementById("billingList");
+    const sessionForm = document.getElementById("sessionForm");
+    const sessionsBody = document.getElementById("sessionsBody");
+    const sessionSearch = document.getElementById("sessionSearch");
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const email = user.email;
+    const billBtn = document.getElementById("addBill");
+    const billingBody = document.getElementById("billingBody");
 
-        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email));
-        const sessionSnap = await getDocs(sessionQuery);
-        sessionList.innerHTML = "";
-        sessionSnap.forEach(doc => {
-          const d = doc.data();
-          sessionList.innerHTML += `
-            <tr>
-              <td>${d.course}</td>
-              <td>${d.concept}</td>
-              <td>${d.duration} mins</td>
-              <td>${d.date}</td>
-            </tr>`;
-        });
+    sessionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const docRef = await addDoc(collection(db, "sessions"), {
+        student: document.getElementById("studentEmail").value,
+        course: document.getElementById("course").value,
+        concept: document.getElementById("concept").value,
+        duration: +document.getElementById("duration").value,
+        date: document.getElementById("date").value
+      });
+      alert("Session added: " + docRef.id);
+    });
 
-        const billingQuery = query(collection(db, "billing"), where("student", "==", email));
-        const billingSnap = await getDocs(billingQuery);
-        billingList.innerHTML = "";
-        billingSnap.forEach(doc => {
-          const b = doc.data();
-          billingList.innerHTML += `
-            <tr>
-              <td>$${b.amount}</td>
-              <td>${b.note}</td>
-              <td>${b.date.toDate().toLocaleString()}</td>
-            </tr>`;
-        });
-      } else {
-        window.location.href = "index.html";
+    billBtn.addEventListener("click", async () => {
+      const docRef = await addDoc(collection(db, "billing"), {
+        student: document.getElementById("billStudent").value,
+        amount: +document.getElementById("amount").value,
+        note: document.getElementById("billNote").value,
+        date: Timestamp.now()
+      });
+      alert("Billing entry added: " + docRef.id);
+    });
+
+    async function loadSessions() {
+      const querySnapshot = await getDocs(collection(db, "sessions"));
+      sessionsBody.innerHTML = "";
+      querySnapshot.forEach((doc) => {
+        const d = doc.data();
+        sessionsBody.innerHTML += `
+          <tr>
+            <td>${d.student}</td>
+            <td>${d.course}</td>
+            <td>${d.concept}</td>
+            <td>${d.duration} mins</td>
+            <td>${d.date}</td>
+          </tr>`;
+      });
+    }
+
+    async function loadBilling() {
+      const querySnapshot = await getDocs(collection(db, "billing"));
+      billingBody.innerHTML = "";
+      querySnapshot.forEach((doc) => {
+        const b = doc.data();
+        billingBody.innerHTML += `
+          <tr>
+            <td>${b.student}</td>
+            <td>$${b.amount}</td>
+            <td>${b.note}</td>
+            <td>${b.date.toDate().toLocaleString()}</td>
+          </tr>`;
+      });
+    }
+
+    sessionSearch.addEventListener("input", () => {
+      const filter = sessionSearch.value.toLowerCase();
+      const rows = sessionsBody.getElementsByTagName("tr");
+      for (let i = 0; i < rows.length; i++) {
+        const rowText = rows[i].innerText.toLowerCase();
+        rows[i].style.display = rowText.includes(filter) ? "" : "none";
       }
     });
 
-    function logout() {
-      signOut(auth).then(() => {
-        window.location.href = "index.html";
-      });
-    }
-  </script></body>
+    loadSessions();
+    loadBilling();
+  </script>
+</body>
 </html>
