@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Dashboard - My Tutor</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
     body {
@@ -39,6 +38,34 @@
       color: #f59e0b;
       font-weight: bold;
     }
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #10b981;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .trophy {
+      color: #f59e0b;
+      font-size: 24px;
+    }
+    .progress-bar {
+      height: 10px;
+      background-color: #e5e7eb;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .progress {
+      height: 100%;
+      background-color: #10b981;
+      transition: width 0.3s ease;
+    }
   </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
@@ -65,12 +92,15 @@
         <h1 class="text-2xl font-bold mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</h1>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-            <h3 class="text-lg font-semibold mb-2">Your Sessions per Course</h3>
-            <canvas id="sessionsChart"></canvas>
-          </div>
-          <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-            <h3 class="text-lg font-semibold mb-2">Your Billing Total</h3>
-            <canvas id="billingChart"></canvas>
+            <h3 class="text-lg font-semibold mb-2 flex items-center"><i class="fas fa-trophy trophy mr-2"></i>Covered Sessions</h3>
+            <p id="coveredSessionsCount" class="text-3xl font-bold mb-2">0</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Great job completing your sessions!</p>
+            <div class="mt-4">
+              <div class="progress-bar">
+                <div id="progressBar" class="progress" style="width: 0%"></div>
+              </div>
+              <p id="progressText" class="text-sm mt-2 text-gray-600 dark:text-gray-400">Progress: 0% toward your next milestone</p>
+            </div>
           </div>
           <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <h3 class="text-lg font-semibold mb-2"><i class="fas fa-calendar mr-2"></i>Weekly Sessions</h3>
@@ -83,6 +113,11 @@
             <h4 class="text-md font-semibold mb-2">Upcoming Sessions</h4>
             <div id="upcomingSessions"></div>
           </div>
+        </div>
+        <div class="mt-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+          <h3 class="text-lg font-semibold mb-2"><i class="fas fa-fire mr-2"></i>Session Streak</h3>
+          <p id="streakCount" class="text-2xl font-bold mb-2">0 days</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Keep the momentum going!</p>
         </div>
       </section>
 
@@ -127,7 +162,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
@@ -152,10 +187,14 @@
     const menuToggle = document.getElementById("menuToggle");
     const sidebar = document.getElementById("sidebar");
     const logoutBtn = document.getElementById("logoutBtn");
+    const coveredSessionsCount = document.getElementById("coveredSessionsCount");
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+    const streakCount = document.getElementById("streakCount");
 
     let currentWeekStart = new Date();
     currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
-    let sessionsChart, billingChart;
+    let unsubscribeSessions, unsubscribeBilling;
 
     // Sidebar and Navigation
     function setupSidebar() {
@@ -196,9 +235,24 @@
       });
     }
 
+    // Format Date
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+        timeZone: "Africa/Harare" // CAT (UTC+2)
+      });
+    }
+
     // Session Status Logic
     function getSessionStatus(sessionDate, duration) {
-      const now = new Date();
+      const now = new Date("2025-05-21T10:36:00+02:00"); // Current time: 10:36 AM CAT
       const sessionStart = new Date(sessionDate);
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60000);
       if (now >= sessionStart && now <= sessionEnd) {
@@ -210,62 +264,54 @@
       }
     }
 
-    // Load Dashboard Charts
+    // Calculate Streak
+    function calculateStreak(sessions) {
+      const sortedSessions = sessions
+        .filter(s => getSessionStatus(s.date, s.duration) === "past")
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      let streak = 0;
+      let lastDate = null;
+
+      for (const session of sortedSessions) {
+        const sessionDate = new Date(session.date);
+        if (!lastDate) {
+          streak = 1;
+          lastDate = sessionDate;
+        } else {
+          const diffDays = Math.floor((lastDate - sessionDate) / (1000 * 60 * 60 * 24));
+          if (diffDays === 1) {
+            streak++;
+            lastDate = sessionDate;
+          } else if (diffDays > 1) {
+            break;
+          }
+        }
+      }
+      return streak;
+    }
+
+    // Load Dashboard
     async function loadDashboard(email) {
       try {
-        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email));
-        const billingQuery = query(collection(db, "billing"), where("student", "==", email));
-        const sessionSnapshot = await getDocs(sessionQuery);
-        const billingSnapshot = await getDocs(billingQuery);
+        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email.toLowerCase()));
+        const querySnapshot = await getDocs(sessionQuery);
+        const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const covered = sessions.filter(s => getSessionStatus(s.date, s.duration) === "past");
 
-        const courses = ["Catholic Social Teaching", "Accounting", "Math"];
-        const sessionCounts = courses.map(course => ({
-          course,
-          count: sessionSnapshot.docs.filter(doc => doc.data().course === course).length
-        }));
-
-        const billingTotal = billingSnapshot.docs.reduce((acc, doc) => acc + doc.data().amount, 0);
-
-        // Destroy existing charts if they exist
-        if (sessionsChart) {
-          sessionsChart.destroy();
-        }
-        if (billingChart) {
-          billingChart.destroy();
+        coveredSessionsCount.textContent = covered.length;
+        const progress = (covered.length / 5) * 100; // Milestone: 5 covered sessions
+        progressBar.style.width = `${Math.min(progress, 100)}%`;
+        progressText.textContent = `Progress: ${Math.min(progress, 100)}% toward your next milestone`;
+        if (progress >= 100) {
+          progressText.textContent += " - Milestone Achieved! 🎉";
         }
 
-        // Create new charts
-        sessionsChart = new Chart(document.getElementById("sessionsChart"), {
-          type: "bar",
-          data: {
-            labels: sessionCounts.map(c => c.course),
-            datasets: [{
-              label: "Sessions",
-              data: sessionCounts.map(c => c.count),
-              backgroundColor: ["#4f46e5", "#10b981", "#f59e0b"],
-              borderColor: ["#4338ca", "#059669", "#d97706"],
-              borderWidth: 1
-            }]
-          },
-          options: { scales: { y: { beginAtZero: true } } }
-        });
-
-        billingChart = new Chart(document.getElementById("billingChart"), {
-          type: "pie",
-          data: {
-            labels: ["Total Billed", "Remaining"],
-            datasets: [{
-              label: "Billing",
-              data: [billingTotal, billingTotal ? 0 : 1], // Show 1 if no billing to avoid empty chart
-              backgroundColor: ["#4f46e5", "#e5e7eb"],
-              borderColor: ["#4338ca", "#d1d5db"],
-              borderWidth: 1
-            }]
-          }
-        });
+        const streak = calculateStreak(sessions);
+        streakCount.textContent = `${streak} day${streak !== 1 ? 's' : ''}`;
 
         loadWeeklySessions(email);
       } catch (error) {
+        console.error("Dashboard load error:", error);
         alert(`Error loading dashboard: ${error.message}`);
       }
     }
@@ -275,7 +321,7 @@
       try {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
-        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email));
+        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email.toLowerCase()));
         const querySnapshot = await getDocs(sessionQuery);
         const covered = [];
         const upcoming = [];
@@ -295,14 +341,16 @@
         });
 
         coveredSessions.innerHTML = covered.length ? covered.map(s => `
-          <div class="p-2 border-b dark:border-gray-600 ${s.status === 'in_progress' ? 'status-in-progress' : 'status-past'}">
-            ${s.course} (${s.date}) - ${s.status === 'in_progress' ? 'In Progress' : 'Past'}
+          <div class="p-2 border-b dark:border-gray-600 ${s.status === 'in_progress' ? 'status-in-progress flex items-center' : 'status-past'}">
+            ${s.course} (${formatDate(s.date)}) - ${s.status === 'in_progress' ? 'In Progress' : 'Past'}
+            ${s.status === 'in_progress' ? '<span class="loader"></span>' : ''}
           </div>
         `).join("") : "<p>No covered sessions this week.</p>";
         upcomingSessions.innerHTML = upcoming.length ? upcoming.map(s => `
-          <div class="p-2 border-b dark:border-gray-600 status-upcoming">${s.course} (${s.date}) - Upcoming</div>
+          <div class="p-2 border-b dark:border-gray-600 status-upcoming">${s.course} (${formatDate(s.date)}) - Upcoming</div>
         `).join("") : "<p>No upcoming sessions this week.</p>";
       } catch (error) {
+        console.error("Weekly sessions load error:", error);
         alert(`Error loading weekly sessions: ${error.message}`);
       }
     }
@@ -311,7 +359,7 @@
       currentWeekStart.setDate(currentWeekStart.getDate() - 7);
       const user = auth.currentUser;
       if (user) {
-        loadWeeklySessions(user.email);
+        loadWeeklySessions(user.email.toLowerCase());
       }
     });
 
@@ -319,57 +367,65 @@
       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       const user = auth.currentUser;
       if (user) {
-        loadWeeklySessions(user.email);
+        loadWeeklySessions(user.email.toLowerCase());
       }
     });
 
-    // Load User Data
-    async function loadUserData(email) {
+    // Load User Data with Real-time Updates
+    function loadUserData(email) {
       try {
-        // Load Sessions
-        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email));
-        const sessionSnap = await getDocs(sessionQuery);
-        sessionList.innerHTML = "";
-        if (sessionSnap.empty) {
-          sessionList.innerHTML = `<tr><td colspan="5" class="p-3 text-center">No sessions found</td></tr>`;
-        } else {
-          sessionSnap.forEach(doc => {
-            const d = doc.data();
-            const status = getSessionStatus(d.date, d.duration);
-            sessionList.innerHTML += `
-              <tr>
-                <td class="p-3">${d.course}</td>
-                <td class="p-3">${d.concept}</td>
-                <td class="p-3">${d.duration} mins</td>
-                <td class="p-3">${d.date}</td>
-                <td class="p-3 status-${status.replace('_', '-')}">
-                  ${status === 'in_progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
-                </td>
-              </tr>`;
-          });
-        }
+        // Sessions with real-time listener
+        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email.toLowerCase()));
+        unsubscribeSessions = onSnapshot(sessionQuery, (snapshot) => {
+          sessionList.innerHTML = "";
+          if (snapshot.empty) {
+            sessionList.innerHTML = `<tr><td colspan="5" class="p-3 text-center">No sessions found</td></tr>`;
+          } else {
+            snapshot.forEach(doc => {
+              const d = doc.data();
+              const status = getSessionStatus(d.date, d.duration);
+              sessionList.innerHTML += `
+                <tr>
+                  <td class="p-3">${d.course}</td>
+                  <td class="p-3">${d.concept}</td>
+                  <td class="p-3">${d.duration} mins</td>
+                  <td class="p-3">${formatDate(d.date)}</td>
+                  <td class="p-3 status-${status.replace('_', '-')} ${status === 'in_progress' ? 'flex items-center' : ''}">
+                    ${status === 'in_progress' ? 'In Progress <span class="loader"></span>' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </td>
+                </tr>`;
+            });
+          }
+          loadDashboard(email); // Refresh dashboard on data change
+        }, (error) => {
+          console.error("Sessions snapshot error:", error);
+          alert(`Error loading sessions: ${error.message}`);
+        });
 
-        // Load Billing
-        const billingQuery = query(collection(db, "billing"), where("student", "==", email));
-        const billingSnap = await getDocs(billingQuery);
-        billingList.innerHTML = "";
-        if (billingSnap.empty) {
-          billingList.innerHTML = `<tr><td colspan="3" class="p-3 text-center">No billing records found</td></tr>`;
-        } else {
-          billingSnap.forEach(doc => {
-            const b = doc.data();
-            billingList.innerHTML += `
-              <tr>
-                <td class="p-3">$${b.amount}</td>
-                <td class="p-3">${b.note || 'N/A'}</td>
-                <td class="p-3">${b.date.toDate().toLocaleString()}</td>
-              </tr>`;
-          });
-        }
-
-        // Load Dashboard Charts and Weekly Sessions
-        loadDashboard(email);
+        // Billing with real-time listener
+        const billingQuery = query(collection(db, "billing"), where("student", "==", email.toLowerCase()));
+        unsubscribeBilling = onSnapshot(billingQuery, (snapshot) => {
+          billingList.innerHTML = "";
+          if (snapshot.empty) {
+            billingList.innerHTML = `<tr><td colspan="3" class="p-3 text-center">No billing records found</td></tr>`;
+          } else {
+            snapshot.forEach(doc => {
+              const b = doc.data();
+              billingList.innerHTML += `
+                <tr>
+                  <td class="p-3">$${b.amount}</td>
+                  <td class="p-3">${b.note || 'N/A'}</td>
+                  <td class="p-3">${formatDate(b.date.toDate())}</td>
+                </tr>`;
+            });
+          }
+          loadDashboard(email); // Refresh dashboard on data change
+        }, (error) => {
+          console.error("Billing snapshot error:", error);
+          alert(`Error loading billing: ${error.message}`);
+        });
       } catch (error) {
+        console.error("User data load error:", error);
         alert(`Error loading data: ${error.message}`);
       }
     }
@@ -377,7 +433,10 @@
     // Authentication State
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        await loadUserData(user.email);
+        console.log("Logged in user:", user.email);
+        if (unsubscribeSessions) unsubscribeSessions();
+        if (unsubscribeBilling) unsubscribeBilling();
+        loadUserData(user.email);
       } else {
         window.location.href = "index.html";
       }
@@ -386,6 +445,8 @@
     // Logout
     logoutBtn.addEventListener("click", async () => {
       try {
+        if (unsubscribeSessions) unsubscribeSessions();
+        if (unsubscribeBilling) unsubscribeBilling();
         await signOut(auth);
         window.location.href = "index.html";
       } catch (error) {
