@@ -1,74 +1,75 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Dashboard - My Tutor</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background-color: #f1f5f9;
-      margin: 0;
-      padding: 20px;
-      color: #1e293b;
     }
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    .status-past {
+      color: #6b7280;
     }
-    h1, h2 {
-      color: #0f172a;
+    .status-upcoming {
+      color: #10b981;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #e2e8f0;
-    }
-    th {
-      background-color: #f8fafc;
-    }
-    .logout-btn {
-      float: right;
-      background-color: #ef4444;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
+    .status-in-progress {
+      color: #f59e0b;
+      font-weight: bold;
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <button class="logout-btn" onclick="logout()">Logout</button>
-    <h1>Welcome to Your Dashboard</h1><h2>Your Sessions</h2>
-<table>
-  <thead>
-    <tr><th>Course</th><th>Concept</th><th>Duration</th><th>Date</th></tr>
-  </thead>
-  <tbody id="sessionList"></tbody>
-</table>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+  <div class="container max-w-4xl mx-auto p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold"><i class="fas fa-tachometer-alt mr-2"></i>Student Dashboard</h1>
+      <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
+    </div>
 
-<h2>Your Billing</h2>
-<table>
-  <thead>
-    <tr><th>Amount</th><th>Note</th><th>Date</th></tr>
-  </thead>
-  <tbody id="billingList"></tbody>
-</table>
+    <!-- Sessions Section -->
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4"><i class="fas fa-calendar-check mr-2"></i>Your Sessions</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-gray-100 dark:bg-gray-700">
+              <th class="p-3 text-left"><i class="fas fa-book mr-1"></i>Course</th>
+              <th class="p-3 text-left"><i class="fas fa-lightbulb mr-1"></i>Concept</th>
+              <th class="p-3 text-left"><i class="fas fa-clock mr-1"></i>Duration</th>
+              <th class="p-3 text-left"><i class="fas fa-calendar mr-1"></i>Date</th>
+              <th class="p-3 text-left"><i class="fas fa-info-circle mr-1"></i>Status</th>
+            </tr>
+          </thead>
+          <tbody id="sessionList"></tbody>
+        </table>
+      </div>
+    </div>
 
-  </div>  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
-    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+    <!-- Billing Section -->
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+      <h2 class="text-xl font-semibold mb-4"><i class="fas fa-dollar-sign mr-2"></i>Your Billing</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-gray-100 dark:bg-gray-700">
+              <th class="p-3 text-left"><i class="fas fa-money-bill mr-1"></i>Amount</th>
+              <th class="p-3 text-left"><i class="fas fa-sticky-note mr-1"></i>Note</th>
+              <th class="p-3 text-left"><i class="fas fa-calendar mr-1"></i>Date</th>
+            </tr>
+          </thead>
+          <tbody id="billingList"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
@@ -85,46 +86,101 @@
 
     const sessionList = document.getElementById("sessionList");
     const billingList = document.getElementById("billingList");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const email = user.email;
+    // Session Status Logic
+    function getSessionStatus(sessionDate, duration) {
+      const now = new Date();
+      const sessionStart = new Date(sessionDate);
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60000);
+      const inProgressWindow = 15 * 60000; // 15 minutes
 
+      if (now >= sessionStart && now <= sessionEnd) {
+        return "in_progress";
+      } else if (now > sessionEnd) {
+        return "past";
+      } else {
+        return "upcoming";
+      }
+    }
+
+    // Load User Data
+    async function loadUserData(email) {
+      try {
+        // Load Sessions
         const sessionQuery = query(collection(db, "sessions"), where("student", "==", email));
         const sessionSnap = await getDocs(sessionQuery);
         sessionList.innerHTML = "";
-        sessionSnap.forEach(doc => {
-          const d = doc.data();
-          sessionList.innerHTML += `
-            <tr>
-              <td>${d.course}</td>
-              <td>${d.concept}</td>
-              <td>${d.duration} mins</td>
-              <td>${d.date}</td>
-            </tr>`;
-        });
+        if (sessionSnap.empty) {
+          sessionList.innerHTML = `<tr><td colspan="5" class="p-3 text-center">No sessions found</td></tr>`;
+        } else {
+          sessionSnap.forEach(doc => {
+            const d = doc.data();
+            const status = getSessionStatus(d.date, d.duration);
+            sessionList.innerHTML += `
+              <tr>
+                <td class="p-3">${d.course}</td>
+                <td class="p-3">${d.concept}</td>
+                <td class="p-3">${d.duration} mins</td>
+                <td class="p-3">${d.date}</td>
+                <td class="p-3 status-${status.replace('_', '-')}">
+                  ${status === 'in_progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+                </td>
+              </tr>`;
+          });
+        }
 
+        // Load Billing
         const billingQuery = query(collection(db, "billing"), where("student", "==", email));
         const billingSnap = await getDocs(billingQuery);
         billingList.innerHTML = "";
-        billingSnap.forEach(doc => {
-          const b = doc.data();
-          billingList.innerHTML += `
-            <tr>
-              <td>$${b.amount}</td>
-              <td>${b.note}</td>
-              <td>${b.date.toDate().toLocaleString()}</td>
-            </tr>`;
-        });
+        if (billingSnap.empty) {
+          billingList.innerHTML = `<tr><td colspan="3" class="p-3 text-center">No billing records found</td></tr>`;
+        } else {
+          billingSnap.forEach(doc => {
+            const b = doc.data();
+            billingList.innerHTML += `
+              <tr>
+                <td class="p-3">$${b.amount}</td>
+                <td class="p-3">${b.note || 'N/A'}</td>
+                <td class="p-3">${b.date.toDate().toLocaleString()}</td>
+              </tr>`;
+          });
+        }
+      } catch (error) {
+        alert(`Error loading data: ${error.message}`);
+      }
+    }
+
+    // Authentication State
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loadUserData(user.email);
       } else {
         window.location.href = "index.html";
       }
     });
 
-    function logout() {
-      signOut(auth).then(() => {
+    // Logout
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
         window.location.href = "index.html";
-      });
+      } catch (error) {
+        alert(`Error signing out: ${error.message}`);
+      }
+    });
+
+    // Real-time Status Update
+    function updateSessionStatuses() {
+      const user = auth.currentUser;
+      if (user) {
+        loadUserData(user.email);
+      }
     }
-  </script></body>
+
+    // Update statuses every minute
+    setInterval(updateSessionStatuses, 60000);
+  </script>
+</body>
 </html>
