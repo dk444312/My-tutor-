@@ -49,45 +49,72 @@
 <body>
   <div class="container">
     <h2>My Tutor Login</h2>
-    <input type="email" id="email" placeholder="Email"><br>
-    <input type="password" id="password" placeholder="Password"><br>
-    <button onclick="login()">Login</button>
-    <button onclick="register()">Register</button>
+    <input type="email" id="email" placeholder="Email" /><br />
+    <input type="password" id="password" placeholder="Password" /><br />
+    <button id="loginBtn">Login</button>
+    <button id="registerBtn">Register</button>
   </div>
 
- <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
-    authDomain: "my-tutor-a87b5.firebaseapp.com",
-    projectId: "my-tutor-a87b5",
-    storageBucket: "my-tutor-a87b5.appspot.com",
-    messagingSenderId: "825619042650",
-    appId: "1:825619042650:web:79d85905a01fcb90c12363",
-    measurementId: "G-RLRNSD68QW"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
+      authDomain: "my-tutor-a87b5.firebaseapp.com",
+      projectId: "my-tutor-a87b5",
+      storageBucket: "my-tutor-a87b5.appspot.com",
+      messagingSenderId: "825619042650",
+      appId: "1:825619042650:web:79d85905a01fcb90c12363",
+      measurementId: "G-RLRNSD68QW"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
 
-  document.getElementById("loginBtn").addEventListener("click", () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
 
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        if (email === "admin@gmail.com" && password === "Admin3") {
-          window.location.href = "admin.html";
-        } else {
-          window.location.href = "dashboard.html";
-        }
-      })
-      .catch((error) => {
-        alert("Login failed: " + error.message);
-      });
-  });
-</script>
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          // Admin check
+          if (email === "admin@gmail.com" && password === "Admin3") {
+            window.location.href = "admin.html";
+          } else {
+            window.location.href = "dashboard.html";
+          }
+        })
+        .catch((error) => {
+          alert("Login failed: " + error.message);
+        });
+    });
+
+    document.getElementById("registerBtn").addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          alert("Registration successful! You can now log in.");
+          // Optionally clear inputs
+          document.getElementById("email").value = "";
+          document.getElementById("password").value = "";
+        })
+        .catch((error) => {
+          alert("Registration failed: " + error.message);
+        });
+    });
+  </script>
 </body>
 </html>
