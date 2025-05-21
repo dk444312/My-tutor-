@@ -55,49 +55,39 @@
     <button onclick="register()">Register</button>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-analytics.js";
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
-      authDomain: "my-tutor-a87b5.firebaseapp.com",
-      projectId: "my-tutor-a87b5",
-      storageBucket: "my-tutor-a87b5.firebasestorage.app",
-      messagingSenderId: "825619042650",
-      appId: "1:825619042650:web:79d85905a01fcb90c12363",
-      measurementId: "G-RLRNSD68QW"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
+    authDomain: "my-tutor-a87b5.firebaseapp.com",
+    projectId: "my-tutor-a87b5",
+    storageBucket: "my-tutor-a87b5.appspot.com",
+    messagingSenderId: "825619042650",
+    appId: "1:825619042650:web:79d85905a01fcb90c12363",
+    measurementId: "G-RLRNSD68QW"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    getAnalytics(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth();
 
-    window.login = function () {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-          alert("Login successful!");
-          window.location.href = "Dashboard.html";
-        })
-        .catch((error) => {
-          alert("Login error: " + error.message);
-        });
-    }
+  document.getElementById("loginBtn").addEventListener("click", () => {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
 
-    window.register = function () {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-          alert("Registration successful!");
-        })
-        .catch((error) => {
-          alert("Register error: " + error.message);
-        });
-    }
-  </script>
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        if (email === "admin@gmail.com" && password === "Admin3") {
+          window.location.href = "admin.html";
+        } else {
+          window.location.href = "dashboard.html";
+        }
+      })
+      .catch((error) => {
+        alert("Login failed: " + error.message);
+      });
+  });
+</script>
 </body>
 </html>
