@@ -1,48 +1,74 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html lang="en">
 <head>
-  <title>My Tutor - Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard - My Tutor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 700px;
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 20px;
+      color: #1e293b;
+    }
+    .container {
+      max-width: 1000px;
       margin: auto;
-      padding: 30px;
-      background: #f7f9fc;
-    }
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-    .session {
       background: white;
-      margin: 15px 0;
-      padding: 15px 20px;
-      border-radius: 10px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
     }
-    .session h3 {
-      margin: 0 0 8px 0;
-      color: #2c3e50;
+    h1, h2 {
+      color: #0f172a;
     }
-    .session p {
-      margin: 5px 0;
-      color: #555;
-      line-height: 1.3;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    th {
+      background-color: #f8fafc;
+    }
+    .logout-btn {
+      float: right;
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h2>My Tutor Dashboard - Upcoming Sessions</h2>
+  <div class="container">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+    <h1>Welcome to Your Dashboard</h1><h2>Your Sessions</h2>
+<table>
+  <thead>
+    <tr><th>Course</th><th>Concept</th><th>Duration</th><th>Date</th></tr>
+  </thead>
+  <tbody id="sessionList"></tbody>
+</table>
 
-  <div id="sessionsContainer">
-    Loading sessions...
-  </div>
+<h2>Your Billing</h2>
+<table>
+  <thead>
+    <tr><th>Amount</th><th>Note</th><th>Date</th></tr>
+  </thead>
+  <tbody id="billingList"></tbody>
+</table>
 
-  <script type="module">
+  </div>  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
@@ -50,50 +76,55 @@
       projectId: "my-tutor-a87b5",
       storageBucket: "my-tutor-a87b5.appspot.com",
       messagingSenderId: "825619042650",
-      appId: "1:825619042650:web:79d85905a01fcb90c12363",
-      measurementId: "G-RLRNSD68QW"
+      appId: "1:825619042650:web:79d85905a01fcb90c12363"
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
     const auth = getAuth();
+    const db = getFirestore(app);
 
-    // Check user is logged in, redirect if not
-    onAuthStateChanged(auth, user => {
-      if (!user) {
-        alert("Please login first");
+    const sessionList = document.getElementById("sessionList");
+    const billingList = document.getElementById("billingList");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const email = user.email;
+
+        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email));
+        const sessionSnap = await getDocs(sessionQuery);
+        sessionList.innerHTML = "";
+        sessionSnap.forEach(doc => {
+          const d = doc.data();
+          sessionList.innerHTML += `
+            <tr>
+              <td>${d.course}</td>
+              <td>${d.concept}</td>
+              <td>${d.duration} mins</td>
+              <td>${d.date}</td>
+            </tr>`;
+        });
+
+        const billingQuery = query(collection(db, "billing"), where("student", "==", email));
+        const billingSnap = await getDocs(billingQuery);
+        billingList.innerHTML = "";
+        billingSnap.forEach(doc => {
+          const b = doc.data();
+          billingList.innerHTML += `
+            <tr>
+              <td>$${b.amount}</td>
+              <td>${b.note}</td>
+              <td>${b.date.toDate().toLocaleString()}</td>
+            </tr>`;
+        });
+      } else {
         window.location.href = "index.html";
       }
     });
 
-    const sessionsContainer = document.getElementById("sessionsContainer");
-
-    // Query sessions ordered by creation time descending
-    const sessionsQuery = query(collection(db, "sessions"), orderBy("createdAt", "desc"));
-
-    // Real-time listener for sessions
-    onSnapshot(sessionsQuery, (snapshot) => {
-      if (snapshot.empty) {
-        sessionsContainer.innerHTML = "<p>No sessions available yet.</p>";
-        return;
-      }
-
-      sessionsContainer.innerHTML = ""; // Clear old content
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const sessionDiv = document.createElement("div");
-        sessionDiv.className = "session";
-
-        sessionDiv.innerHTML = `
-          <h3>Session Time: ${data.time}</h3>
-          <p><strong>Duration:</strong> ${data.duration} minutes</p>
-          <p><strong>Covered Concepts:</strong> ${data.concepts}</p>
-        `;
-
-        sessionsContainer.appendChild(sessionDiv);
+    function logout() {
+      signOut(auth).then(() => {
+        window.location.href = "index.html";
       });
-    });
-  </script>
-</body>
+    }
+  </script></body>
 </html>
