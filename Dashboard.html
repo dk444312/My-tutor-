@@ -5,129 +5,95 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #eef2f5;
-      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+      padding: 30px;
+      background: #f7f9fc;
     }
-
     h2 {
       text-align: center;
+      color: #333;
+    }
+    .session {
+      background: white;
+      margin: 15px 0;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+    .session h3 {
+      margin: 0 0 8px 0;
       color: #2c3e50;
     }
-
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      margin: 20px auto;
-      max-width: 500px;
-    }
-
-    .card h3 {
-      margin-top: 0;
-      color: #3498db;
-    }
-
-    .logout {
-      text-align: center;
-    }
-
-    button {
-      padding: 10px 20px;
-      background: #e74c3c;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+    .session p {
+      margin: 5px 0;
+      color: #555;
+      line-height: 1.3;
     }
   </style>
 </head>
 <body>
-  <h2>Welcome to My Tutor</h2>
+  <h2>My Tutor Dashboard - Upcoming Sessions</h2>
 
-  <div class="card" id="sessionCard">
-    <h3>Next Session</h3>
-    <p><strong>Time:</strong> <span id="sessionTime">Loading...</span></p>
-    <p><strong>Duration:</strong> <span id="sessionDuration">Loading...</span></p>
-  </div>
-
-  <div class="card" id="conceptCard">
-    <h3>Covered Concepts</h3>
-    <ul id="conceptList"></ul>
-  </div>
-
-  <div class="card" id="assessmentCard">
-    <h3>Your Progress</h3>
-    <p id="assessment">Loading...</p>
-  </div>
-
-  <div class="logout">
-    <button onclick="logout()">Logout</button>
+  <div id="sessionsContainer">
+    Loading sessions...
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
       authDomain: "my-tutor-a87b5.firebaseapp.com",
       projectId: "my-tutor-a87b5",
-      storageBucket: "my-tutor-a87b5.firebasestorage.app",
+      storageBucket: "my-tutor-a87b5.appspot.com",
       messagingSenderId: "825619042650",
       appId: "1:825619042650:web:79d85905a01fcb90c12363",
       measurementId: "G-RLRNSD68QW"
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getFirestore(app);
+    const auth = getAuth();
 
-    function analyzeComment(comment) {
-      if (comment.includes("needs help with")) {
-        return "Focus on: " + comment.split("needs help with")[1].split(".")[0];
-      } else if (comment.includes("excellent in")) {
-        return "You're doing well in: " + comment.split("excellent in")[1].split(".")[0];
-      } else {
-        return "Keep up the good work!";
-      }
-    }
-
-    onAuthStateChanged(auth, async (user) => {
+    // Check user is logged in, redirect if not
+    onAuthStateChanged(auth, user => {
       if (!user) {
+        alert("Please login first");
         window.location.href = "index.html";
-        return;
-      }
-
-      const userDoc = await getDoc(doc(db, "students", user.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-
-        document.getElementById("sessionTime").textContent = data.sessionTime || "Not set";
-        document.getElementById("sessionDuration").textContent = data.sessionDuration || "Not set";
-
-        const concepts = data.concepts || [];
-        const list = document.getElementById("conceptList");
-        list.innerHTML = "";
-        concepts.forEach(c => {
-          const li = document.createElement("li");
-          li.textContent = c;
-          list.appendChild(li);
-        });
-
-        const comment = data.adminComment || "No feedback yet.";
-        document.getElementById("assessment").textContent = analyzeComment(comment);
-      } else {
-        document.getElementById("assessment").textContent = "No data available.";
       }
     });
 
-    function logout() {
-      signOut(auth).then(() => {
-        window.location.href = "index.html";
+    const sessionsContainer = document.getElementById("sessionsContainer");
+
+    // Query sessions ordered by creation time descending
+    const sessionsQuery = query(collection(db, "sessions"), orderBy("createdAt", "desc"));
+
+    // Real-time listener for sessions
+    onSnapshot(sessionsQuery, (snapshot) => {
+      if (snapshot.empty) {
+        sessionsContainer.innerHTML = "<p>No sessions available yet.</p>";
+        return;
+      }
+
+      sessionsContainer.innerHTML = ""; // Clear old content
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const sessionDiv = document.createElement("div");
+        sessionDiv.className = "session";
+
+        sessionDiv.innerHTML = `
+          <h3>Session Time: ${data.time}</h3>
+          <p><strong>Duration:</strong> ${data.duration} minutes</p>
+          <p><strong>Covered Concepts:</strong> ${data.concepts}</p>
+        `;
+
+        sessionsContainer.appendChild(sessionDiv);
       });
-    }
+    });
   </script>
 </body>
 </html>
