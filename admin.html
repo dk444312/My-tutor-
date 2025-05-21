@@ -1,74 +1,74 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html lang="en">
 <head>
-  <title>My Tutor - Admin Panel</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard - My Tutor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 30px;
-      background: #f9f9f9;
-      max-width: 600px;
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 20px;
+      color: #1e293b;
+    }
+    .container {
+      max-width: 1000px;
       margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
     }
-    h2 {
-      text-align: center;
-      color: #333;
+    h1, h2 {
+      color: #0f172a;
     }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
-    }
-    input, textarea {
+    table {
       width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-    button {
+      border-collapse: collapse;
       margin-top: 20px;
-      background: #3498db;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    th {
+      background-color: #f8fafc;
+    }
+    .logout-btn {
+      float: right;
+      background-color: #ef4444;
       color: white;
       border: none;
-      padding: 12px 20px;
+      padding: 8px 16px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 16px;
-    }
-    button:hover {
-      background: #2980b9;
-    }
-    #message {
-      margin-top: 20px;
-      font-weight: bold;
-      color: green;
-      text-align: center;
     }
   </style>
 </head>
 <body>
-  <h2>Admin Panel - Update Tutoring Sessions</h2>
+  <div class="container">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+    <h1>Welcome to Your Dashboard</h1><h2>Your Sessions</h2>
+<table>
+  <thead>
+    <tr><th>Course</th><th>Concept</th><th>Duration</th><th>Date</th></tr>
+  </thead>
+  <tbody id="sessionList"></tbody>
+</table>
 
-  <label for="sessionTime">Session Time (e.g., 10:00 AM)</label>
-  <input type="text" id="sessionTime" placeholder="Enter session time" />
+<h2>Your Billing</h2>
+<table>
+  <thead>
+    <tr><th>Amount</th><th>Note</th><th>Date</th></tr>
+  </thead>
+  <tbody id="billingList"></tbody>
+</table>
 
-  <label for="sessionDuration">Session Duration (minutes)</label>
-  <input type="number" id="sessionDuration" placeholder="Enter duration" />
-
-  <label for="coveredConcepts">Covered Concepts</label>
-  <textarea id="coveredConcepts" rows="4" placeholder="List the concepts covered"></textarea>
-
-  <button id="saveBtn">Save Session Info</button>
-
-  <div id="message"></div>
-
-  <script type="module">
+  </div>  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
@@ -76,49 +76,55 @@
       projectId: "my-tutor-a87b5",
       storageBucket: "my-tutor-a87b5.appspot.com",
       messagingSenderId: "825619042650",
-      appId: "1:825619042650:web:79d85905a01fcb90c12363",
-      measurementId: "G-RLRNSD68QW"
+      appId: "1:825619042650:web:79d85905a01fcb90c12363"
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
     const auth = getAuth();
+    const db = getFirestore(app);
 
-    // Only allow admin to access this page
-    onAuthStateChanged(auth, (user) => {
-      if (!user || user.email !== "admin@gmail.com") {
-        alert("Access denied: Admin only");
+    const sessionList = document.getElementById("sessionList");
+    const billingList = document.getElementById("billingList");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const email = user.email;
+
+        const sessionQuery = query(collection(db, "sessions"), where("student", "==", email));
+        const sessionSnap = await getDocs(sessionQuery);
+        sessionList.innerHTML = "";
+        sessionSnap.forEach(doc => {
+          const d = doc.data();
+          sessionList.innerHTML += `
+            <tr>
+              <td>${d.course}</td>
+              <td>${d.concept}</td>
+              <td>${d.duration} mins</td>
+              <td>${d.date}</td>
+            </tr>`;
+        });
+
+        const billingQuery = query(collection(db, "billing"), where("student", "==", email));
+        const billingSnap = await getDocs(billingQuery);
+        billingList.innerHTML = "";
+        billingSnap.forEach(doc => {
+          const b = doc.data();
+          billingList.innerHTML += `
+            <tr>
+              <td>$${b.amount}</td>
+              <td>${b.note}</td>
+              <td>${b.date.toDate().toLocaleString()}</td>
+            </tr>`;
+        });
+      } else {
         window.location.href = "index.html";
       }
     });
 
-    document.getElementById("saveBtn").addEventListener("click", async () => {
-      const sessionTime = document.getElementById("sessionTime").value.trim();
-      const sessionDuration = document.getElementById("sessionDuration").value.trim();
-      const coveredConcepts = document.getElementById("coveredConcepts").value.trim();
-
-      if (!sessionTime || !sessionDuration || !coveredConcepts) {
-        alert("Please fill all fields");
-        return;
-      }
-
-      try {
-        await addDoc(collection(db, "sessions"), {
-          time: sessionTime,
-          duration: Number(sessionDuration),
-          concepts: coveredConcepts,
-          createdAt: serverTimestamp()
-        });
-
-        document.getElementById("message").textContent = "Session info saved successfully!";
-        // Clear inputs
-        document.getElementById("sessionTime").value = "";
-        document.getElementById("sessionDuration").value = "";
-        document.getElementById("coveredConcepts").value = "";
-      } catch (error) {
-        alert("Error saving session info: " + error.message);
-      }
-    });
-  </script>
-</body>
+    function logout() {
+      signOut(auth).then(() => {
+        window.location.href = "index.html";
+      });
+    }
+  </script></body>
 </html>
