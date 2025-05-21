@@ -1,63 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Tutor - Login/Register</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f0f4f8;
-      text-align: center;
-      padding: 50px;
+      font-family: 'Inter', sans-serif;
     }
-
-    h2 {
-      color: #2c3e50;
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #4f46e5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: opacity 0.5s ease;
     }
-
-    input {
-      padding: 10px;
-      width: 80%;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-
-    button {
-      padding: 10px 20px;
-      margin: 10px 5px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #2980b9;
-    }
-
-    .container {
-      background: white;
-      padding: 30px;
-      max-width: 400px;
-      margin: auto;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    .loader-hidden {
+      opacity: 0;
+      pointer-events: none;
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h2>My Tutor Login</h2>
-    <input type="email" id="email" placeholder="Email" /><br />
-    <input type="password" id="password" placeholder="Password" /><br />
-    <button id="loginBtn">Login</button>
-    <button id="registerBtn">Register</button>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex items-center justify-center">
+  <!-- Loader -->
+  <div id="loader" class="loader">
+    <h1 class="text-4xl font-bold text-white animate-pulse"><i class="fas fa-chalkboard-teacher mr-2"></i>My Tutor</h1>
+  </div>
+
+  <!-- Form Container -->
+  <div id="formContainer" class="hidden max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+    <h2 id="formTitle" class="text-2xl font-bold mb-6 text-center"><i class="fas fa-sign-in-alt mr-2"></i>Login to My Tutor</h2>
+    <form id="authForm" class="space-y-4">
+      <div>
+        <label for="email" class="block text-sm font-medium mb-1"><i class="fas fa-envelope mr-1"></i>Email</label>
+        <input type="email" id="email" placeholder="Enter your email" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+        <p id="emailError" class="text-red-500 text-sm hidden">Please enter a valid email</p>
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium mb-1"><i class="fas fa-lock mr-1"></i>Password</label>
+        <input type="password" id="password" placeholder="Enter your password" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+        <p id="passwordError" class="text-red-500 text-sm hidden">Password must be at least 6 characters</p>
+      </div>
+      <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700"><i class="fas fa-sign-in-alt mr-2"></i>Login</button>
+    </form>
+    <p class="mt-4 text-center">
+      <button id="toggleForm" class="text-indigo-600 hover:underline">Don't have an account? Register</button>
+    </p>
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
@@ -65,55 +66,101 @@
       projectId: "my-tutor-a87b5",
       storageBucket: "my-tutor-a87b5.appspot.com",
       messagingSenderId: "825619042650",
-      appId: "1:825619042650:web:79d85905a01fcb90c12363",
-      measurementId: "G-RLRNSD68QW"
+      appId: "1:825619042650:web:79d85905a01fcb90c12363"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth();
 
-    document.getElementById("loginBtn").addEventListener("click", () => {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+    const loader = document.getElementById("loader");
+    const formContainer = document.getElementById("formContainer");
+    const authForm = document.getElementById("authForm");
+    const formTitle = document.getElementById("formTitle");
+    const submitBtn = document.getElementById("submitBtn");
+    const toggleForm = document.getElementById("toggleForm");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const emailError = document.getElementById("emailError");
+    const passwordError = document.getElementById("passwordError");
 
-      if (!email || !password) {
-        alert("Please enter both email and password.");
-        return;
+    // Show loader for 2 seconds
+    setTimeout(() => {
+      loader.classList.add("loader-hidden");
+      setTimeout(() => {
+        loader.style.display = "none";
+        formContainer.classList.remove("hidden");
+      }, 500);
+    }, 2000);
+
+    // Form mode (login or register)
+    let isLoginMode = true;
+
+    // Validate form
+    function validateForm() {
+      let valid = true;
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        emailError.classList.remove("hidden");
+        valid = false;
+      } else {
+        emailError.classList.add("hidden");
       }
 
-      signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
+      if (password.length < 6) {
+        passwordError.classList.remove("hidden");
+        valid = false;
+      } else {
+        passwordError.classList.add("hidden");
+      }
+
+      return valid;
+    }
+
+    // Toggle between login and register
+    toggleForm.addEventListener("click", () => {
+      isLoginMode = !isLoginMode;
+      if (isLoginMode) {
+        formTitle.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Login to My Tutor';
+        submitBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Login';
+        toggleForm.textContent = "Don't have an account? Register";
+      } else {
+        formTitle.innerHTML = '<i class="fas fa-user-plus mr-2"></i>Register for My Tutor';
+        submitBtn.innerHTML = '<i class="fas fa-user-plus mr-2"></i>Register';
+        toggleForm.textContent = "Already have an account? Login";
+      }
+      emailInput.value = "";
+      passwordInput.value = "";
+      emailError.classList.add("hidden");
+      passwordError.classList.add("hidden");
+    });
+
+    // Form submission
+    authForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!validateForm()) return;
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      try {
+        if (isLoginMode) {
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
           // Admin check
           if (email === "admin@gmail.com" && password === "Admin3") {
             window.location.href = "admin.html";
           } else {
-            window.location.href = "Dashboard.html";
+            window.location.href = "dashboard.html";
           }
-        })
-        .catch((error) => {
-          alert("Login failed: " + error.message);
-        });
-    });
-
-    document.getElementById("registerBtn").addEventListener("click", () => {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
-
-      if (!email || !password) {
-        alert("Please enter both email and password.");
-        return;
-      }
-
-      createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
+        } else {
+          await createUserWithEmailAndPassword(auth, email, password);
           alert("Registration successful! You can now log in.");
-          // Optionally clear inputs
-          document.getElementById("email").value = "";
-          document.getElementById("password").value = "";
-        })
-        .catch((error) => {
-          alert("Registration failed: " + error.message);
-        });
+          toggleForm.click(); // Switch to login mode
+        }
+      } catch (error) {
+        alert(`${isLoginMode ? "Login" : "Registration"} failed: ${error.message}`);
+      }
     });
   </script>
 </body>
