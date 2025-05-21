@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Tutor - Admin Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f8fa;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .container {
+      max-width: 600px;
+      background: white;
+      padding: 30px;
+      margin: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    input, textarea {
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #1e8449;
+    }
+
+    .note {
+      font-size: 14px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h2>Admin Panel</h2>
+
+  <div class="container">
+    <label>Student UID</label>
+    <input type="text" id="uid" placeholder="Enter student UID">
+
+    <label>Session Time</label>
+    <input type="text" id="sessionTime" placeholder="e.g., 10:00 AM">
+
+    <label>Session Duration</label>
+    <input type="text" id="sessionDuration" placeholder="e.g., 1 hour">
+
+    <label>Covered Concepts (comma-separated)</label>
+    <input type="text" id="concepts" placeholder="e.g., CST: Justice, Accounting: Balance Sheet">
+
+    <label>Admin Comment</label>
+    <textarea id="adminComment" rows="4" placeholder="e.g., Student needs help with fractions. Doing well in CST."></textarea>
+
+    <button onclick="updateStudent()">Update Student Info</button>
+    <p class="note">Make sure the UID is correct. This updates data in Firestore.</p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
+      authDomain: "my-tutor-a87b5.firebaseapp.com",
+      projectId: "my-tutor-a87b5",
+      storageBucket: "my-tutor-a87b5.firebasestorage.app",
+      messagingSenderId: "825619042650",
+      appId: "1:825619042650:web:79d85905a01fcb90c12363",
+      measurementId: "G-RLRNSD68QW"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        alert("Please login as admin.");
+        window.location.href = "index.html";
+      }
+    });
+
+    window.updateStudent = async function () {
+      const uid = document.getElementById("uid").value.trim();
+      const sessionTime = document.getElementById("sessionTime").value.trim();
+      const sessionDuration = document.getElementById("sessionDuration").value.trim();
+      const conceptsRaw = document.getElementById("concepts").value.trim();
+      const adminComment = document.getElementById("adminComment").value.trim();
+
+      if (!uid) {
+        alert("UID is required.");
+        return;
+      }
+
+      const concepts = conceptsRaw.split(',').map(c => c.trim()).filter(c => c.length > 0);
+
+      try {
+        await setDoc(doc(db, "students", uid), {
+          sessionTime,
+          sessionDuration,
+          concepts,
+          adminComment
+        }, { merge: true });
+
+        alert("Student info updated successfully!");
+      } catch (error) {
+        alert("Error updating student: " + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

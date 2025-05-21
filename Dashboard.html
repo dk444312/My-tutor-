@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Tutor - Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f5;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin: 20px auto;
+      max-width: 500px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #3498db;
+    }
+
+    .logout {
+      text-align: center;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Welcome to My Tutor</h2>
+
+  <div class="card" id="sessionCard">
+    <h3>Next Session</h3>
+    <p><strong>Time:</strong> <span id="sessionTime">Loading...</span></p>
+    <p><strong>Duration:</strong> <span id="sessionDuration">Loading...</span></p>
+  </div>
+
+  <div class="card" id="conceptCard">
+    <h3>Covered Concepts</h3>
+    <ul id="conceptList"></ul>
+  </div>
+
+  <div class="card" id="assessmentCard">
+    <h3>Your Progress</h3>
+    <p id="assessment">Loading...</p>
+  </div>
+
+  <div class="logout">
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
+      authDomain: "my-tutor-a87b5.firebaseapp.com",
+      projectId: "my-tutor-a87b5",
+      storageBucket: "my-tutor-a87b5.firebasestorage.app",
+      messagingSenderId: "825619042650",
+      appId: "1:825619042650:web:79d85905a01fcb90c12363",
+      measurementId: "G-RLRNSD68QW"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    function analyzeComment(comment) {
+      if (comment.includes("needs help with")) {
+        return "Focus on: " + comment.split("needs help with")[1].split(".")[0];
+      } else if (comment.includes("excellent in")) {
+        return "You're doing well in: " + comment.split("excellent in")[1].split(".")[0];
+      } else {
+        return "Keep up the good work!";
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const userDoc = await getDoc(doc(db, "students", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+
+        document.getElementById("sessionTime").textContent = data.sessionTime || "Not set";
+        document.getElementById("sessionDuration").textContent = data.sessionDuration || "Not set";
+
+        const concepts = data.concepts || [];
+        const list = document.getElementById("conceptList");
+        list.innerHTML = "";
+        concepts.forEach(c => {
+          const li = document.createElement("li");
+          li.textContent = c;
+          list.appendChild(li);
+        });
+
+        const comment = data.adminComment || "No feedback yet.";
+        document.getElementById("assessment").textContent = analyzeComment(comment);
+      } else {
+        document.getElementById("assessment").textContent = "No data available.";
+      }
+    });
+
+    function logout() {
+      signOut(auth).then(() => {
+        window.location.href = "index.html";
+      });
+    }
+  </script>
+</body>
+</html>
