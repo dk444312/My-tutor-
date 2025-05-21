@@ -4,131 +4,297 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Tutor Admin Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background: #f9fafb;
-      color: #333;
-      margin: 0;
-      padding: 20px;
     }
-    h1 {
-      color: #2c3e50;
+    .sidebar {
+      transition: transform 0.3s ease;
     }
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    .sidebar-hidden {
+      transform: translateX(-100%);
     }
-    label {
+    .modal {
+      transition: opacity 0.3s ease;
+    }
+    .section {
+      display: none;
+    }
+    .section.active {
       display: block;
-      margin-top: 10px;
     }
-    input, select, textarea {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        z-index: 50;
+      }
     }
-    button {
-      background: #4f46e5;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      margin-top: 15px;
-      border-radius: 8px;
-      cursor: pointer;
+    .status-past {
+      color: #6b7280;
     }
-    button:hover {
-      background: #4338ca;
+    .status-upcoming {
+      color: #10b981;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #e5e7eb;
-    }
-    th {
-      background: #f3f4f6;
-    }
-    .flex {
-      display: flex;
-      gap: 10px;
-    }
-    .billing-section {
-      margin-top: 40px;
+    .status-in-progress {
+      color: #f59e0b;
+      font-weight: bold;
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>Admin Panel - My Tutor</h1>
-    <form id="sessionForm">
-      <label for="studentEmail">Student Email:</label>
-      <input type="email" id="studentEmail" required>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <!-- Sidebar -->
+  <div class="sidebar fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg p-4 md:translate-x-0 sidebar-hidden" id="sidebar">
+    <h2 class="text-xl font-bold mb-6"><i class="fas fa-chalkboard-teacher mr-2"></i>My Tutor Admin</h2>
+    <nav>
+      <ul>
+        <li><a href="#dashboard" class="nav-link block py-2 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" data-section="dashboard"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</a></li>
+        <li><a href="#sessions" class="nav-link block py-2 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" data-section="sessions"><i class="fas fa-calendar-check mr-2"></i>Sessions</a></li>
+        <li><a href="#billing" class="nav-link block py-2 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" data-section="billing"><i class="fas fa-dollar-sign mr-2"></i>Billing</a></li>
+        <li><a href="#performance" class="nav-link block py-2 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" data-section="performance"><i class="fas fa-chart-line mr-2"></i>Student Performance</a></li>
+        <li><a href="#echo" class="nav-link block py-2 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" data-section="echo"><i class="fas fa-brain mr-2"></i>Echo Algorithm</a></li>
+        <li><button id="themeToggle" class="block py-2 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 rounded w-full text-left"><i class="fas fa-moon mr-2"></i>Toggle Dark Mode</button></li>
+      </ul>
+    </nav>
+  </div>
 
-      <label for="course">Course:</label>
-      <select id="course">
-        <option value="Catholic Social Teaching">Catholic Social Teaching</option>
-        <option value="Accounting">Accounting</option>
-        <option value="Math">Math</option>
-      </select>
+  <!-- Main Content -->
+  <div class="md:ml-64 p-6 min-h-screen">
+    <button id="menuToggle" class="md:hidden mb-4 p-2 bg-indigo-600 text-white rounded"><i class="fas fa-bars mr-2"></i>Menu</button>
+    <div class="max-w-7xl mx-auto">
+      <!-- Dashboard Section -->
+      <section id="dashboard" class="section active">
+        <h1 class="text-2xl font-bold mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-2">Sessions per Course</h3>
+            <canvas id="sessionsChart"></canvas>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-2">Billing Totals</h3>
+            <canvas id="billingChart"></canvas>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-2"><i class="fas fa-calendar mr-2"></i>Weekly Sessions</h3>
+            <div class="flex gap-4 mb-4">
+              <button id="prevWeek" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"><i class="fas fa-arrow-left mr-2"></i>Previous Week</button>
+              <button id="nextWeek" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Next Week<i class="fas fa-arrow-right ml-2"></i></button>
+            </div>
+            <h4 class="text-md font-semibold mb-2">Covered Sessions</h4>
+            <div id="coveredSessions" class="mb-4"></div>
+            <h4 class="text-md font-semibold mb-2">Upcoming Sessions</h4>
+            <div id="upcomingSessions"></div>
+          </div>
+        </div>
+      </section>
 
-      <label for="concept">Concept Covered:</label>
-      <input type="text" id="concept" required>
+      <!-- Sessions Section -->
+      <section id="sessions" class="section">
+        <h1 class="text-2xl font-bold mb-4"><i class="fas fa-calendar-check mr-2"></i>Sessions</h1>
+        <!-- Session Form -->
+        <h2 class="text-xl font-bold mb-4">Add Session</h2>
+        <form id="sessionForm" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-4">
+          <div>
+            <label for="studentEmail" class="block text-sm font-medium">Student Email</label>
+            <input type="email" id="studentEmail" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+            <p id="studentEmailError" class="text-red-500 text-sm hidden">Valid email required</p>
+          </div>
+          <div>
+            <label for="course" class="block text-sm font-medium">Course</label>
+            <select id="course" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+              <option value="Catholic Social Teaching">Catholic Social Teaching</option>
+              <option value="Accounting">Accounting</option>
+              <option value="Math">Math</option>
+            </select>
+          </div>
+          <div>
+            <label for="concept" class="block text-sm font-medium">Concept Covered</label>
+            <input type="text" id="concept" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+            <p id="conceptError" class="text-red-500 text-sm hidden">Concept is required</p>
+          </div>
+          <div>
+            <label for="duration" class="block text-sm font-medium">Session Duration (mins)</label>
+            <input type="number" id="duration" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+            <p id="durationError" class="text-red-500 text-sm hidden">Duration must be a positive number</p>
+          </div>
+          <div>
+            <label for="date" class="block text-sm font-medium">Date and Time</label>
+            <input type="datetime-local" id="date" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+            <p id="dateError" class="text-red-500 text-sm hidden">Date and time required</p>
+          </div>
+          <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"><i class="fas fa-plus mr-2"></i>Add Session</button>
+        </form>
+        <!-- Daily Results Form -->
+        <h2 class="text-xl font-bold my-4">Log Session Results</h2>
+        <form id="resultsForm" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-4">
+          <div>
+            <label for="resultStudent" class="block text-sm font-medium">Student Email</label>
+            <input type="email" id="resultStudent" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+            <p id="resultStudentError" class="text-red-500 text-sm hidden">Valid email required</p>
+          </div>
+          <div>
+            <label for="resultDate" class="block text-sm font-medium">Session Date</label>
+            <input type="date" id="resultDate" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+          </div>
+          <div>
+            <label for="resultFeedback" class="block text-sm font-medium">Feedback</label>
+            <textarea id="resultFeedback" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required></textarea>
+            <p id="resultFeedbackError" class="text-red-500 text-sm hidden">Feedback is required</p>
+          </div>
+          <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"><i class="fas fa-comment mr-2"></i>Log Results</button>
+        </form>
+        <!-- Session Table -->
+        <h2 class="text-xl font-bold my-4">Session Records</h2>
+        <div class="flex gap-4 mb-4">
+          <input type="text" id="sessionSearch" placeholder="Search by student or course" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+          <select id="courseFilter" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+            <option value="">All Courses</option>
+            <option value="Catholic Social Teaching">Catholic Social Teaching</option>
+            <option value="Accounting">Accounting</option>
+            <option value="Math">Math</option>
+          </select>
+          <button id="exportSessions" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"><i class="fas fa-file-export mr-2"></i>Export to CSV</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
+            <thead>
+              <tr class="bg-gray-100 dark:bg-gray-700">
+                <th class="p-3 text-left">Student</th>
+                <th class="p-3 text-left">Course</th>
+                <th class="p-3 text-left">Concept</th>
+                <th class="p-3 text-left">Duration</th>
+                <th class="p-3 text-left">Date</th>
+                <th class="p-3 text-left">Status</th>
+                <th class="p-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sessionsBody"></tbody>
+          </table>
+        </div>
+      </section>
 
-      <label for="duration">Session Duration (mins):</label>
-      <input type="number" id="duration" required>
+      <!-- Billing Section -->
+      <section id="billing" class="section">
+        <h1 class="text-2xl font-bold mb-4"><i class="fas fa-dollar-sign mr-2"></i>Billing</h1>
+        <h2 class="text-xl font-bold mb-4">Add Billing Entry</h2>
+        <form id="billingForm" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-4">
+          <div>
+            <label for="billStudent" class="block text-sm font-medium">Student Email</label>
+            <input type="email" id="billStudent" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+            <p id="billStudentError" class="text-red-500 text-sm hidden">Valid email required</p>
+          </div>
+          <div>
+            <label for="amount" class="block text-sm font-medium">Amount ($)</label>
+            <input type="number" id="amount" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+            <p id="amountError" class="text-red-500 text-sm hidden">Amount must be a positive number</p>
+          </div>
+          <div>
+            <label for="billNote" class="block text-sm font-medium">Note</label>
+            <textarea id="billNote" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
+          </div>
+          <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"><i class="fas fa-plus mr-2"></i>Add Billing Entry</button>
+        </form>
+        <h2 class="text-xl font-bold my-4">Billing Records</h2>
+        <div class="flex gap-4 mb-4">
+          <input type="text" id="billingSearch" placeholder="Search by student" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+          <button id="exportBilling" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"><i class="fas fa-file-export mr-2"></i>Export to CSV</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
+            <thead>
+              <tr class="bg-gray-100 dark:bg-gray-700">
+                <th class="p-3 text-left">Student</th>
+                <th class="p-3 text-left">Amount</th>
+                <th class="p-3 text-left">Note</th>
+                <th class="p-3 text-left">Date</th>
+              </tr>
+            </thead>
+            <tbody id="billingBody"></tbody>
+          </table>
+        </div>
+      </section>
 
-      <label for="date">Date:</label>
-      <input type="date" id="date" required>
+      <!-- Performance Section -->
+      <section id="performance" class="section">
+        <h1 class="text-2xl font-bold mb-4"><i class="fas fa-chart-line mr-2"></i>Student Performance</h1>
+        <input type="text" id="performanceSearch" placeholder="Search by student" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 mb-4">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
+            <thead>
+              <tr class="bg-gray-100 dark:bg-gray-700">
+                <th class="p-3 text-left">Student</th>
+                <th class="p-3 text-left">Total Sessions</th>
+                <th class="p-3 text-left">Total Duration (mins)</th>
+                <th class="p-3 text-left">Latest Feedback</th>
+              </tr>
+            </thead>
+            <tbody id="performanceBody"></tbody>
+          </table>
+        </div>
+      </section>
 
-      <button type="submit">Add Session</button>
-    </form>
-
-    <div class="billing-section">
-      <h2>Billing Info</h2>
-      <label for="billStudent">Student Email:</label>
-      <input type="email" id="billStudent">
-
-      <label for="amount">Amount ($):</label>
-      <input type="number" id="amount">
-
-      <label for="billNote">Note:</label>
-      <textarea id="billNote"></textarea>
-
-      <button id="addBill">Add Billing Entry</button>
+      <!-- Echo Algorithm Section -->
+      <section id="echo" class="section">
+        <h1 class="text-2xl font-bold mb-4"><i class="fas fa-brain mr-2"></i>Echo Algorithm</h1>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse bg-white dark:bg-gray-800 rounded-lg shadow">
+            <thead>
+              <tr class="bg-gray-100 dark:bg-gray-700">
+                <th class="p-3 text-left">Student</th>
+                <th class="p-3 text-left">Score</th>
+                <th class="p-3 text-left">Feedback</th>
+              </tr>
+            </thead>
+            <tbody id="echoBody"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
+  </div>
 
-    <h2>Session Records</h2>
-    <input type="text" id="sessionSearch" placeholder="Search sessions">
-    <table>
-      <thead>
-        <tr><th>Student</th><th>Course</th><th>Concept</th><th>Duration</th><th>Date</th></tr>
-      </thead>
-      <tbody id="sessionsBody"></tbody>
-    </table>
-
-    <h2>Billing Records</h2>
-    <table>
-      <thead>
-        <tr><th>Student</th><th>Amount</th><th>Note</th><th>Date</th></tr>
-      </thead>
-      <tbody id="billingBody"></tbody>
-    </table>
+  <!-- Edit Session Modal -->
+  <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden modal items-center justify-center">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+      <h3 class="text-lg font-bold mb-4">Edit Session</h3>
+      <form id="editSessionForm" class="space-y-4">
+        <input type="hidden" id="editSessionId">
+        <div>
+          <label for="editStudentEmail" class="block text-sm font-medium">Student Email</label>
+          <input type="email" id="editStudentEmail" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+        </div>
+        <div>
+          <label for="editCourse" class="block text-sm font-medium">Course</label>
+          <select id="editCourse" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+            <option value="Catholic Social Teaching">Catholic Social Teaching</option>
+            <option value="Accounting">Accounting</option>
+            <option value="Math">Math</option>
+          </select>
+        </div>
+        <div>
+          <label for="editConcept" class="block text-sm font-medium">Concept Covered</label>
+          <input type="text" id="editConcept" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+        </div>
+        <div>
+          <label for="editDuration" class="block text-sm font-medium">Session Duration (mins)</label>
+          <input type="number" id="editDuration" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+        </div>
+        <div>
+          <label for="editDate" class="block text-sm font-medium">Date and Time</label>
+          <input type="datetime-local" id="editDate" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" required>
+        </div>
+        <div class="flex gap-4">
+          <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"><i class="fas fa-save mr-2"></i>Save</button>
+          <button type="button" id="cancelEdit" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"><i class="fas fa-times mr-2"></i>Cancel</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCthkxyO-M5XSJ93jRO1uMg2J_Bnuq5gvc",
@@ -142,77 +308,570 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // DOM Elements
     const sessionForm = document.getElementById("sessionForm");
+    const resultsForm = document.getElementById("resultsForm");
     const sessionsBody = document.getElementById("sessionsBody");
     const sessionSearch = document.getElementById("sessionSearch");
-
-    const billBtn = document.getElementById("addBill");
+    const courseFilter = document.getElementById("courseFilter");
+    const billingForm = document.getElementById("billingForm");
     const billingBody = document.getElementById("billingBody");
+    const billingSearch = document.getElementById("billingSearch");
+    const performanceBody = document.getElementById("performanceBody");
+    const performanceSearch = document.getElementById("performanceSearch");
+    const echoBody = document.getElementById("echoBody");
+    const editModal = document.getElementById("editModal");
+    const editSessionForm = document.getElementById("editSessionForm");
+    const cancelEdit = document.getElementById("cancelEdit");
+    const themeToggle = document.getElementById("themeToggle");
+    const menuToggle = document.getElementById("menuToggle");
+    const sidebar = document.getElementById("sidebar");
+    const exportSessions = document.getElementById("exportSessions");
+    const exportBilling = document.getElementById("exportBilling");
+    const coveredSessions = document.getElementById("coveredSessions");
+    const upcomingSessions = document.getElementById("upcomingSessions");
+    const prevWeek = document.getElementById("prevWeek");
+    const nextWeek = document.getElementById("nextWeek");
 
-    sessionForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const docRef = await addDoc(collection(db, "sessions"), {
-        student: document.getElementById("studentEmail").value,
-        course: document.getElementById("course").value,
-        concept: document.getElementById("concept").value,
-        duration: +document.getElementById("duration").value,
-        date: document.getElementById("date").value
+    let currentWeekStart = new Date();
+    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+
+    // Sidebar and Navigation
+    function setupSidebar() {
+      themeToggle.addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+        localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
       });
-      alert("Session added: " + docRef.id);
+      if (localStorage.getItem("theme") === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+
+      menuToggle.addEventListener("click", () => {
+        sidebar.classList.toggle("sidebar-hidden");
+      });
+
+      document.addEventListener("click", (e) => {
+        if (window.innerWidth < 768 && !sidebar.contains(e.target) && !menuToggle.contains(e.target) && !sidebar.classList.contains("sidebar-hidden")) {
+          sidebar.classList.add("sidebar-hidden");
+        }
+      });
+
+      const navLinks = document.querySelectorAll(".nav-link");
+      navLinks.forEach(link => {
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          const sectionId = link.getAttribute("data-section");
+          document.querySelectorAll(".section").forEach(section => section.classList.remove("active"));
+          document.getElementById(sectionId).classList.add("active");
+          navLinks.forEach(l => l.classList.remove("bg-gray-200", "dark:bg-gray-700"));
+          link.classList.add("bg-gray-200", "dark:bg-gray-700");
+          if (window.innerWidth < 768) {
+            sidebar.classList.add("sidebar-hidden");
+          }
+        });
+      });
+    }
+
+    // Form Validation
+    function validateForm(formId, fields) {
+      let valid = true;
+      fields.forEach(({ id, errorId, condition }) => {
+        const input = document.getElementById(id);
+        const error = document.getElementById(errorId);
+        if (!input || !error) return;
+        if (condition(input.value)) {
+          error.classList.remove("hidden");
+          valid = false;
+        } else {
+          error.classList.add("hidden");
+        }
+      });
+      return valid;
+    }
+
+    // Export to CSV
+    function exportToCSV(data, filename) {
+      const csv = data.map(row => Object.values(row).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Session Status Logic
+    function getSessionStatus(sessionDate, duration) {
+      const now = new Date();
+      const sessionStart = new Date(sessionDate);
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60000);
+      const inProgressWindow = 15 * 60000; // 15 minutes
+
+      if (now >= sessionStart && now <= sessionEnd) {
+        return "in_progress";
+      } else if (now > sessionEnd) {
+        return "past";
+      } else {
+        return "upcoming";
+      }
+    }
+
+    // Dashboard
+    async function loadDashboard() {
+      try {
+        const sessionSnapshot = await getDocs(collection(db, "sessions"));
+        const billingSnapshot = await getDocs(collection(db, "billing"));
+
+        const courses = ["Catholic Social Teaching", "Accounting", "Math"];
+        const sessionCounts = courses.map(course => ({
+          course,
+          count: sessionSnapshot.docs.filter(doc => doc.data().course === course).length
+        }));
+
+        const billingTotals = billingSnapshot.docs.reduce((acc, doc) => {
+          const data = doc.data();
+          acc[data.student] = (acc[data.student] || 0) + data.amount;
+          return acc;
+        }, {});
+
+        new Chart(document.getElementById("sessionsChart"), {
+          type: "bar",
+          data: {
+            labels: sessionCounts.map(c => c.course),
+            datasets: [{
+              label: "Sessions",
+              data: sessionCounts.map(c => c.count),
+              backgroundColor: ["#4f46e5", "#10b981", "#f59e0b"],
+              borderColor: ["#4338ca", "#059669", "#d97706"],
+              borderWidth: 1
+            }]
+          },
+          options: { scales: { y: { beginAtZero: true } } }
+        });
+
+        new Chart(document.getElementById("billingChart"), {
+          type: "pie",
+          data: {
+            labels: Object.keys(billingTotals),
+            datasets: [{
+              label: "Billing Totals",
+              data: Object.values(billingTotals),
+              backgroundColor: ["#4f46e5", "#10b981", "#f59e0b", "#ef4444"],
+              borderColor: ["#4338ca", "#059669", "#d97706", "#dc2626"],
+              borderWidth: 1
+            }]
+          }
+        });
+
+        loadWeeklySessions();
+      } catch (error) {
+        alert(`Error loading dashboard: ${error.message}`);
+      }
+    }
+
+    async function loadWeeklySessions() {
+      try {
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const querySnapshot = await getDocs(collection(db, "sessions"));
+        const now = new Date();
+        const covered = [];
+        const upcoming = [];
+
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const sessionDate = new Date(data.date);
+          if (sessionDate >= currentWeekStart && sessionDate <= weekEnd) {
+            const status = getSessionStatus(data.date, data.duration);
+            data.status = status;
+            if (status === "past" || status === "in_progress") {
+              covered.push(data);
+            } else {
+              upcoming.push(data);
+            }
+          }
+        });
+
+        coveredSessions.innerHTML = covered.length ? covered.map(s => `
+          <div class="p-2 border-b dark:border-gray-600 ${s.status === 'in_progress' ? 'status-in-progress' : 'status-past'}">
+            ${s.student} - ${s.course} (${s.date}) - ${s.status === 'in_progress' ? 'In Progress' : 'Past'}
+          </div>
+        `).join("") : "<p>No covered sessions this week.</p>";
+        upcomingSessions.innerHTML = upcoming.length ? upcoming.map(s => `
+          <div class="p-2 border-b dark:border-gray-600 status-upcoming">${s.student} - ${s.course} (${s.date}) - Upcoming</div>
+        `).join("") : "<p>No upcoming sessions this week.</p>";
+      } catch (error) {
+        alert(`Error loading weekly sessions: ${error.message}`);
+      }
+    }
+
+    prevWeek.addEventListener("click", () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+      loadWeeklySessions();
     });
 
-    billBtn.addEventListener("click", async () => {
-      const docRef = await addDoc(collection(db, "billing"), {
-        student: document.getElementById("billStudent").value,
-        amount: +document.getElementById("amount").value,
-        note: document.getElementById("billNote").value,
-        date: Timestamp.now()
-      });
-      alert("Billing entry added: " + docRef.id);
+    nextWeek.addEventListener("click", () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      loadWeeklySessions();
+    });
+
+    // Sessions
+    sessionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const isValid = validateForm("sessionForm", [
+        { id: "studentEmail", errorId: "studentEmailError", condition: (v) => !/^\S+@\S+\.\S+$/.test(v) },
+        { id: "concept", errorId: "conceptError", condition: (v) => !v.trim() },
+        { id: "duration", errorId: "durationError", condition: (v) => !v || v <= 0 },
+        { id: "date", errorId: "dateError", condition: (v) => !v }
+      ]);
+      if (!isValid) return;
+      try {
+        const sessionDate = new Date(document.getElementById("date").value);
+        const duration = +document.getElementById("duration").value;
+        const status = getSessionStatus(sessionDate, duration);
+        const docRef = await addDoc(collection(db, "sessions"), {
+          student: document.getElementById("studentEmail").value,
+          course: document.getElementById("course").value,
+          concept: document.getElementById("concept").value,
+          duration: duration,
+          date: document.getElementById("date").value,
+          status: status
+        });
+        alert(`Session added: ${docRef.id}`);
+        sessionForm.reset();
+        loadSessions();
+        loadDashboard();
+        loadPerformance();
+        loadEcho();
+      } catch (error) {
+        alert(`Error adding session: ${error.message}`);
+      }
+    });
+
+    resultsForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const isValid = validateForm("resultsForm", [
+        { id: "resultStudent", errorId: "resultStudentError", condition: (v) => !/^\S+@\S+\.\S+$/.test(v) },
+        { id: "resultFeedback", errorId: "resultFeedbackError", condition: (v) => !v.trim() }
+      ]);
+      if (!isValid) return;
+      try {
+        const docRef = await addDoc(collection(db, "session_results"), {
+          student: document.getElementById("resultStudent").value,
+          date: document.getElementById("resultDate").value,
+          feedback: document.getElementById("resultFeedback").value,
+          timestamp: Timestamp.now()
+        });
+        alert(`Results logged: ${docRef.id}`);
+        resultsForm.reset();
+        loadPerformance();
+        loadEcho();
+      } catch (error) {
+        alert(`Error logging results: ${error.message}`);
+      }
     });
 
     async function loadSessions() {
-      const querySnapshot = await getDocs(collection(db, "sessions"));
-      sessionsBody.innerHTML = "";
-      querySnapshot.forEach((doc) => {
-        const d = doc.data();
-        sessionsBody.innerHTML += `
-          <tr>
-            <td>${d.student}</td>
-            <td>${d.course}</td>
-            <td>${d.concept}</td>
-            <td>${d.duration} mins</td>
-            <td>${d.date}</td>
-          </tr>`;
+      try {
+        const q = courseFilter.value ? query(collection(db, "sessions"), where("course", "==", courseFilter.value)) : collection(db, "sessions");
+        const querySnapshot = await getDocs(q);
+        sessionsBody.innerHTML = "";
+        for (const document of querySnapshot.docs) {
+          const d = document.data();
+          const status = getSessionStatus(d.date, d.duration);
+          if (d.status !== status) {
+            await updateDoc(doc(db, "sessions", document.id), { status: status });
+          }
+          sessionsBody.innerHTML += `
+            <tr>
+              <td class="p-3">${d.student}</td>
+              <td class="p-3">${d.course}</td>
+              <td class="p-3">${d.concept}</td>
+              <td class="p-3">${d.duration} mins</td>
+              <td class="p-3">${d.date}</td>
+              <td class="p-3 status-${status.replace('_', '-')}">
+                ${status === 'in_progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+              </td>
+              <td class="p-3">
+                <button class="edit-btn text-blue-600 hover:underline" data-id="${document.id}"><i class="fas fa-edit mr-1"></i>Edit</button>
+                <button class="delete-btn text-red-600 hover:underline" data-id="${document.id}"><i class="fas fa-trash mr-1"></i>Delete</button>
+              </td>
+            </tr>`;
+        }
+        addSessionActions();
+      } catch (error) {
+        alert(`Error loading sessions: ${error.message}`);
+      }
+    }
+
+    function addSessionActions() {
+      document.querySelectorAll(".edit-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.id;
+          try {
+            const docRef = doc(db, "sessions", id);
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
+              alert("Session not found");
+              return;
+            }
+            const data = docSnap.data();
+            document.getElementById("editSessionId").value = id;
+            document.getElementById("editStudentEmail").value = data.student;
+            document.getElementById("editCourse").value = data.course;
+            document.getElementById("editConcept").value = data.concept;
+            document.getElementById("editDuration").value = data.duration;
+            document.getElementById("editDate").value = data.date;
+            editModal.classList.remove("hidden");
+          } catch (error) {
+            alert(`Error loading session for edit: ${error.message}`);
+          }
+        });
+      });
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (confirm("Are you sure you want to delete this session?")) {
+            try {
+              await deleteDoc(doc(db, "sessions", btn.dataset.id));
+              alert("Session deleted");
+              loadSessions();
+              loadDashboard();
+              loadPerformance();
+              loadEcho();
+            } catch (error) {
+              alert(`Error deleting session: ${error.message}`);
+            }
+          }
+        });
       });
     }
 
-    async function loadBilling() {
-      const querySnapshot = await getDocs(collection(db, "billing"));
-      billingBody.innerHTML = "";
-      querySnapshot.forEach((doc) => {
-        const b = doc.data();
-        billingBody.innerHTML += `
-          <tr>
-            <td>${b.student}</td>
-            <td>$${b.amount}</td>
-            <td>${b.note}</td>
-            <td>${b.date.toDate().toLocaleString()}</td>
-          </tr>`;
-      });
-    }
+    editSessionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const id = document.getElementById("editSessionId").value;
+        const sessionDate = new Date(document.getElementById("editDate").value);
+        const duration = +document.getElementById("editDuration").value;
+        const status = getSessionStatus(sessionDate, duration);
+        await updateDoc(doc(db, "sessions", id), {
+          student: document.getElementById("editStudentEmail").value,
+          course: document.getElementById("editCourse").value,
+          concept: document.getElementById("editConcept").value,
+          duration: duration,
+          date: document.getElementById("editDate").value,
+          status: status
+        });
+        alert("Session updated");
+        editModal.classList.add("hidden");
+        loadSessions();
+        loadDashboard();
+        loadPerformance();
+        loadEcho();
+      } catch (error) {
+        alert(`Error updating session: ${error.message}`);
+      }
+    });
+
+    cancelEdit.addEventListener("click", () => editModal.classList.add("hidden"));
 
     sessionSearch.addEventListener("input", () => {
       const filter = sessionSearch.value.toLowerCase();
       const rows = sessionsBody.getElementsByTagName("tr");
-      for (let i = 0; i < rows.length; i++) {
-        const rowText = rows[i].innerText.toLowerCase();
-        rows[i].style.display = rowText.includes(filter) ? "" : "none";
+      for (let row of rows) {
+        const rowText = row.innerText.toLowerCase();
+        row.style.display = rowText.includes(filter) ? "" : "none";
       }
     });
 
+    courseFilter.addEventListener("change", loadSessions);
+
+    exportSessions.addEventListener("click", async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "sessions"));
+        const data = [["Student", "Course", "Concept", "Duration", "Date", "Status"]];
+        querySnapshot.forEach(doc => {
+          const d = doc.data();
+          data.push([d.student, d.course, d.concept, `${d.duration} mins`, d.date, d.status]);
+        });
+        exportToCSV(data, "sessions.csv");
+      } catch (error) {
+        alert(`Error exporting sessions: ${error.message}`);
+      }
+    });
+
+    // Billing
+    billingForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const isValid = validateForm("billingForm", [
+        { id: "billStudent", errorId: "billStudentError", condition: (v) => !/^\S+@\S+\.\S+$/.test(v) },
+        { id: "amount", errorId: "amountError", condition: (v) => !v || v <= 0 }
+      ]);
+      if (!isValid) return;
+      try {
+        const docRef = await addDoc(collection(db, "billing"), {
+          student: document.getElementById("billStudent").value,
+          amount: +document.getElementById("amount").value,
+          note: document.getElementById("billNote").value,
+          date: Timestamp.now()
+        });
+        alert(`Billing entry added: ${docRef.id}`);
+        billingForm.reset();
+        loadBilling();
+        loadDashboard();
+      } catch (error) {
+        alert(`Error adding billing entry: ${error.message}`);
+      }
+    });
+
+    async function loadBilling() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "billing"));
+        billingBody.innerHTML = "";
+        querySnapshot.forEach((doc) => {
+          const b = doc.data();
+          billingBody.innerHTML += `
+            <tr>
+              <td class="p-3">${b.student}</td>
+              <td class="p-3">$${b.amount}</td>
+              <td class="p-3">${b.note}</td>
+              <td class="p-3">${b.date.toDate().toLocaleString()}</td>
+            </tr>`;
+        });
+      } catch (error) {
+        alert(`Error loading billing: ${error.message}`);
+      }
+    }
+
+    billingSearch.addEventListener("input", () => {
+      const filter = billingSearch.value.toLowerCase();
+      const rows = billingBody.getElementsByTagName("tr");
+      for (let row of rows) {
+        const rowText = row.innerText.toLowerCase();
+        row.style.display = rowText.includes(filter) ? "" : "none";
+      }
+    });
+
+    exportBilling.addEventListener("click", async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "billing"));
+        const data = [["Student", "Amount", "Note", "Date"]];
+        querySnapshot.forEach(doc => {
+          const b = doc.data();
+          data.push([b.student, `$${b.amount}`, b.note, b.date.toDate().toLocaleString()]);
+        });
+        exportToCSV(data, "billing.csv");
+      } catch (error) {
+        alert(`Error exporting billing: ${error.message}`);
+      }
+    });
+
+    // Performance
+    async function loadPerformance() {
+      try {
+        const sessionSnapshot = await getDocs(collection(db, "sessions"));
+        const resultsSnapshot = await getDocs(collection(db, "session_results"));
+        const students = {};
+
+        sessionSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (!students[data.student]) {
+            students[data.student] = { sessions: 0, duration: 0, feedback: "" };
+          }
+          students[data.student].sessions += 1;
+          students[data.student].duration += data.duration;
+        });
+
+        resultsSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (students[data.student]) {
+            students[data.student].feedback = data.feedback;
+          }
+        });
+
+        performanceBody.innerHTML = "";
+        Object.keys(students).forEach(student => {
+          const data = students[student];
+          performanceBody.innerHTML += `
+            <tr>
+              <td class="p-3">${student}</td>
+              <td class="p-3">${data.sessions}</td>
+              <td class="p-3">${data.duration} mins</td>
+              <td class="p-3">${data.feedback || "No feedback"}</td>
+            </tr>`;
+        });
+      } catch (error) {
+        alert(`Error loading performance: ${error.message}`);
+      }
+    }
+
+    performanceSearch.addEventListener("input", () => {
+      const filter = performanceSearch.value.toLowerCase();
+      const rows = performanceBody.getElementsByTagName("tr");
+      for (let row of rows) {
+        const rowText = row.innerText.toLowerCase();
+        row.style.display = rowText.includes(filter) ? "" : "none";
+      }
+    });
+
+    // Echo Algorithm
+    async function loadEcho() {
+      try {
+        const sessionSnapshot = await getDocs(collection(db, "sessions"));
+        const resultsSnapshot = await getDocs(collection(db, "session_results"));
+        const students = {};
+
+        sessionSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (!students[data.student]) {
+            students[data.student] = { sessions: 0, duration: 0, feedback: [] };
+          }
+          students[data.student].sessions += 1;
+          students[data.student].duration += data.duration;
+        });
+
+        resultsSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (students[data.student]) {
+            students[data.student].feedback.push(data.feedback);
+          }
+        });
+
+        echoBody.innerHTML = "";
+        Object.keys(students).forEach(student => {
+          const data = students[student];
+          const sessionsPerWeek = data.sessions / 4; // Assuming 4 weeks in a month
+          const positiveFeedback = data.feedback.some(f => f.toLowerCase().includes("good") || f.toLowerCase().includes("excellent"));
+          const score = (sessionsPerWeek * 10) + (data.duration / 10) + (positiveFeedback ? 20 : -10);
+          const feedback = score > 80 ? "Excellent" : score > 50 ? "On Track" : "Needs Improvement";
+          echoBody.innerHTML += `
+            <tr>
+              <td class="p-3">${student}</td>
+              <td class="p-3">${score.toFixed(2)}</td>
+              <td class="p-3">${feedback}</td>
+            </tr>`;
+        });
+      } catch (error) {
+        alert(`Error loading Echo algorithm: ${error.message}`);
+      }
+    }
+
+    // Real-time Status Update
+    function updateSessionStatuses() {
+      loadSessions();
+      loadWeeklySessions();
+    }
+
+    // Update statuses every minute
+    setInterval(updateSessionStatuses, 60000);
+
+    // Initialize
+    setupSidebar();
+    loadDashboard();
     loadSessions();
     loadBilling();
+    loadPerformance();
+    loadEcho();
   </script>
 </body>
 </html>
