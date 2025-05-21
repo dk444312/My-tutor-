@@ -413,7 +413,7 @@
               const b = doc.data();
               billingList.innerHTML += `
                 <tr>
-                  <td class="p-3">$K{b.amount}</td>
+                  <td class="p-3">$${b.amount}</td>
                   <td class="p-3">${b.note || 'N/A'}</td>
                   <td class="p-3">${formatDate(b.date.toDate())}</td>
                 </tr>`;
